@@ -1,0 +1,49 @@
+version: '3.6'
+
+services:
+    docker-test-app:
+        image: docker-test-app:latest
+        build:
+            context: ..
+            dockerfile: ./test_docker/Dockerfile
+    agent:
+        image: docker-test-app:latest
+        entrypoint:
+            - python
+            - -m
+            - test
+        environment:
+            BROKER: redis://redis:6379/0
+            BACKEND: redis://redis:6379/0
+        depends_on:
+            - redis
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+        networks:
+            - docker-test-app
+    broker:
+        image: docker-test-app:latest
+        entrypoint:
+            - celery
+            - -A
+            - test.app
+            - worker
+            - -l
+            - INFO
+        environment:
+            BROKER: redis://redis:6379/0
+            BACKEND: redis://redis:6379/0
+        depends_on:
+            - redis
+        networks:
+            - docker-test-app
+    redis:
+        image: redis:latest
+        ports:
+            - 6379:6379
+        networks:
+            - docker-test-app
+
+networks:
+    docker-test-app:
+        name: docker-test-app
