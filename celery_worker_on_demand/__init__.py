@@ -5,13 +5,10 @@ from cached_property import cached_property
 from kombu.utils.limits import TokenBucket
 
 
-logger = logging.getLogger('CeleryBrokerOnDemand')
+logger = logging.getLogger('CeleryWorkerOnDemand')
 
 
-class CeleryBrokerOnDemand:
-    INSPECT_METHODS = ('stats', 'active_queues', 'registered', 'scheduled',
-                       'active', 'reserved', 'revoked', 'conf')
-
+class CeleryWorkerOnDemand:
     def __init__(self, celery_app):
         self.celery_app = celery_app
 
@@ -35,7 +32,7 @@ class CeleryBrokerOnDemand:
         )
 
     def run(self):
-        logger.info('Running Celery Broker On Demand...')
+        logger.info('Running Celery Worker On Demand...')
         limiter = TokenBucket(1)
         with self.consumer:
             while True:

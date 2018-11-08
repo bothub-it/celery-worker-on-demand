@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "645a586a61c7efb4d46c28f0e877fc6af28d0e14cd22a89ad2d9c82a797c0e76"
+            "sha256": "4947b058b5b0014b4c4ae88d9cbc9e359d23c5748ac7492b920aec0253ec1cde"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -44,9 +44,9 @@
             "index": "pypi",
             "version": "==4.2.1"
         },
-        "celery-broker-on-demand": {
+        "celery-worker-on-demand": {
             "editable": true,
-            "path": "./celery-broker-on-demand"
+            "path": "./celery-worker-on-demand"
         },
         "certifi": {
             "hashes": [

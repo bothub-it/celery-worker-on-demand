@@ -1,6 +1,6 @@
+from decouple import config
 from celery import Celery
 from kombu import Queue
-from decouple import config
 
 
 BROKER = config('BROKER', default='redis://localhost:6379/0')

@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-celery-broker-on-demand = {editable = true, path = "./celery-broker-on-demand"}
+celery-worker-on-demand = {editable = true, path = "./celery-worker-on-demand"}
 celery = "*"
 redis = "*"
 python-decouple = "*"

@@ -6,6 +6,14 @@ services:
         build:
             context: ..
             dockerfile: ./test_docker/Dockerfile
+        entrypoint:
+            - python
+            - -m
+        environment:
+            BROKER: redis://redis:6379/0
+            BACKEND: redis://redis:6379/0
+        depends_on:
+            - redis
     agent:
         image: docker-test-app:latest
         entrypoint:
@@ -19,14 +27,12 @@ services:
             - redis
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
-        networks:
-            - docker-test-app
     broker:
         image: docker-test-app:latest
         entrypoint:
             - celery
             - -A
-            - test.app
+            - test
             - worker
             - -l
             - INFO
@@ -35,15 +41,11 @@ services:
             BACKEND: redis://redis:6379/0
         depends_on:
             - redis
-        networks:
-            - docker-test-app
     redis:
         image: redis:latest
         ports:
             - 6379:6379
-        networks:
-            - docker-test-app
 
 networks:
-    docker-test-app:
+    default:
         name: docker-test-app

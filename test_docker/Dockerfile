@@ -5,8 +5,6 @@ WORKDIR ${WORKDIR}
 
 RUN pip install pipenv
 
-COPY Pipfile Pipfile
-COPY Pipfile.lock Pipfile.lock
 COPY ./test_docker/ .
-COPY . ./celery-broker-on-demand/
+COPY . ./celery-worker-on-demand/
 RUN pipenv install --system
