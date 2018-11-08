@@ -4,8 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-celery = "==4.2.1"
-cached-property = "==1.5.1"
+celery = ">=4.2.1"
+cached-property = ">=1.5.1"
 
 [dev-packages]
 "flake8" = "*"
