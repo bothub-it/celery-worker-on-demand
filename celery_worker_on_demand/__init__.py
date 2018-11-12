@@ -69,6 +69,42 @@ class QueueUpdater(threading.Thread):
         return found
 
 
+class UpWorker(threading.Thread):
+    def __init__(self, agent, queue):
+        super().__init__()
+        self.agent = agent
+        self.queue = queue
+
+    def run(self):
+        logger.debug(f'Uping new worker to queue {self.queue.name}')
+        raise Exception('UpWorker().run() not implemented')
+
+
+class Agent(threading.Thread):
+    def __init__(self, cwod):
+        super().__init__()
+        self.cwod = cwod
+        self.up_worker_th = {}
+
+    def run(self):
+        while True:
+            for queue in self.cwod.queues.values():
+                if self.flag_up(queue):
+                    logger.info(f'Up new worker to queue {queue.name}')
+                    self.up_worker_th[queue.name] = self.cwod. \
+                        UpWorker(self, queue)
+                    self.up_worker_th[queue.name].start()
+                th = self.up_worker_th.get(queue.name)
+                if th and not th.isAlive():
+                    self.up_worker_th[queue.name] = None
+            sleep(.2)
+
+    def flag_up(self, queue):
+        return queue.size > 0 \
+            and not queue.has_worker \
+            and not self.up_worker_th.get(queue.name)
+
+
 class APIServer(threading.Thread):
     def __init__(self, cwod):
         super().__init__()
@@ -99,6 +135,8 @@ class CeleryWorkerOnDemand:
     QueueStatus = QueueStatus
     QueueUpdater = QueueUpdater
     APIServer = APIServer
+    Agent = Agent
+    UpWorker = UpWorker
 
     def __init__(self, celery_app, queue_updater_fill_rate=2,
                  api_server_address=('', 8000)):
@@ -110,6 +148,7 @@ class CeleryWorkerOnDemand:
             self.add_queue(queue.name)
         self.queue_updater = self.QueueUpdater(self)
         self.api_server = self.APIServer(self)
+        self.agent = self.Agent(self)
 
     @cached_property
     def connection(self):
@@ -126,8 +165,10 @@ class CeleryWorkerOnDemand:
     def run(self):
         self.queue_updater.start()
         self.api_server.start()
+        self.agent.start()
         self.queue_updater.join()
         self.api_server.join()
+        self.agent.join()
 
     def serializer(self):
         return {
