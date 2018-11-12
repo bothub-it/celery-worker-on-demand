@@ -96,6 +96,10 @@ class APIServer(threading.Thread):
 
 
 class CeleryWorkerOnDemand:
+    QueueStatus = QueueStatus
+    QueueUpdater = QueueUpdater
+    APIServer = APIServer
+
     def __init__(self, celery_app, queue_updater_fill_rate=2,
                  api_server_address=('', 8000)):
         self.celery_app = celery_app
@@ -104,8 +108,8 @@ class CeleryWorkerOnDemand:
         self.queues = {}
         for queue in self.celery_app.conf.get('task_queues'):
             self.add_queue(queue.name)
-            self.queue_updater = QueueUpdater(self)
-            self.api_server = APIServer(self)
+        self.queue_updater = self.QueueUpdater(self)
+        self.api_server = self.APIServer(self)
 
     @cached_property
     def connection(self):
@@ -117,7 +121,7 @@ class CeleryWorkerOnDemand:
         return self.connection.default_channel
 
     def add_queue(self, queue_name):
-        self.queues[queue_name] = QueueStatus(queue_name)
+        self.queues[queue_name] = self.QueueStatus(queue_name)
 
     def run(self):
         self.queue_updater.start()
