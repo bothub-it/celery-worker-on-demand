@@ -13,15 +13,20 @@ logger = logging.getLogger('CeleryWorkerOnDemand')
 
 
 class QueueStatus:
-    def __init__(self, name, size=0, has_worker=False):
+    def __init__(self, name, size=0, many_worker=0):
         self.name = name
         self.size = size
-        self.has_worker = has_worker
+        self.many_worker = many_worker
+
+    @property
+    def has_worker(self):
+        return self.many_worker > 0
 
     def serializer(self):
         return {
           'name': self.name,
           'size': self.size,
+          'many_worker': self.many_worker,
           'has_worker': self.has_worker,
         }
 
@@ -37,7 +42,7 @@ class QueueUpdater(threading.Thread):
             if limiter.can_consume():
                 for queue in self.cwod.queues.values():
                     queue.size = self.queue_size(queue)
-                    queue.has_worker = self.queue_has_worker(queue)
+                    queue.many_worker = self.queue_many_worker(queue)
             else:
                 sleep_time = limiter.expected_time(1)
                 logger.debug(f'Sleeping for {sleep_time} seconds...')
@@ -46,10 +51,10 @@ class QueueUpdater(threading.Thread):
     def queue_size(self, queue):
         return self.cwod.channel._size(queue.name)
 
-    def queue_has_worker(self, queue):
+    def queue_many_worker(self, queue):
         logger.debug(
             f'Checking if exists some worker to {queue.name} queue...')
-        found = False
+        found = 0
         inspect = self.cwod.celery_app.control.inspect()
         active_queues = inspect.active_queues()
         if active_queues:
@@ -58,9 +63,9 @@ class QueueUpdater(threading.Thread):
                     if q.get('name') == queue.name:
                         logger.debug(
                             f'Worker to {queue.name} found: {worker_hostname}')
-                        found = True
-            if not found:
-                logger.debug(f'Worker to {queue.name} not found!')
+                        found += 1
+        if found == 0:
+            logger.debug(f'Worker to {queue.name} not found!')
         return found
 
 

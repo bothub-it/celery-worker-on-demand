@@ -1,7 +1,0 @@
-{
-    "python.linting.enabled": false,
-    "editor.rulers": [
-        79,
-    ],
-    "python.pythonPath": "/home/douglas/.local/share/virtualenvs/bothub-nlp-daf-zzvH/bin/python"
-}
