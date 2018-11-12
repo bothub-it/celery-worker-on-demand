@@ -13,20 +13,20 @@ logger = logging.getLogger('CeleryWorkerOnDemand')
 
 
 class QueueStatus:
-    def __init__(self, name, size=0, many_worker=0):
+    def __init__(self, name, size=0, many_workers=0):
         self.name = name
         self.size = size
-        self.many_worker = many_worker
+        self.many_workers = many_workers
 
     @property
     def has_worker(self):
-        return self.many_worker > 0
+        return self.many_workers > 0
 
     def serializer(self):
         return {
           'name': self.name,
           'size': self.size,
-          'many_worker': self.many_worker,
+          'many_workers': self.many_workers,
           'has_worker': self.has_worker,
         }
 
@@ -42,7 +42,7 @@ class QueueUpdater(threading.Thread):
             if limiter.can_consume():
                 for queue in self.cwod.queues.values():
                     queue.size = self.queue_size(queue)
-                    queue.many_worker = self.queue_many_worker(queue)
+                    queue.many_workers = self.queue_many_workers(queue)
             else:
                 sleep_time = limiter.expected_time(1)
                 logger.debug(f'Sleeping for {sleep_time} seconds...')
@@ -51,7 +51,7 @@ class QueueUpdater(threading.Thread):
     def queue_size(self, queue):
         return self.cwod.channel._size(queue.name)
 
-    def queue_many_worker(self, queue):
+    def queue_many_workers(self, queue):
         logger.debug(
             f'Checking if exists some worker to {queue.name} queue...')
         found = 0
