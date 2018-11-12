@@ -1,5 +1,9 @@
 import logging
+import threading
+import json
 from time import sleep
+from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler
 
 from cached_property import cached_property
 from kombu.utils.limits import TokenBucket
@@ -8,91 +12,96 @@ from kombu.utils.limits import TokenBucket
 logger = logging.getLogger('CeleryWorkerOnDemand')
 
 
-class CeleryWorkerOnDemand:
-    def __init__(self, celery_app):
-        self.celery_app = celery_app
+class QueueStatus:
+  def __init__(self, name, size=0):
+    self.name = name
+    self.size = size
 
-    @cached_property
-    def connection(self):
-        logger.debug('Getting connection...')
-        return self.celery_app.connection(heartbeat=False)
+  def serializer(self):
+    return {
+      'name': self.name,
+      'size': self.size,
+    }
 
-    @property
-    def channel(self):
-        return self.connection.default_channel
 
-    @cached_property
-    def consumer(self):
-        logger.debug('Getting consumer...')
-        return self.celery_app.amqp.TaskConsumer(
-            self.channel,
-            callbacks=[
-                self.on_message,
-            ],
+class QueueSizeUpdater(threading.Thread):
+  def __init__(self, cwod):
+    super().__init__()
+    self.cwod = cwod
+
+  def run(self):
+    limiter = TokenBucket(self.cwod.queue_size_updater_fill_rate)
+    while True:
+      if limiter.can_consume():
+        for queue in self.cwod.queues.values():
+          queue.size = self.cwod.channel._size(queue.name)
+      else:
+        sleep_time = limiter.expected_time(1)
+        logger.debug(f'Sleeping for {sleep_time} seconds...')
+        sleep(sleep_time)
+
+
+class APIServer(threading.Thread):
+  def __init__(self, cwod):
+    super().__init__()
+    self.cwod = cwod
+
+  def run(self):
+    cwod = self.cwod
+    class APIHandler(BaseHTTPRequestHandler):
+      def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type','application/json')
+        self.end_headers()
+        self.wfile.write(
+          bytes(
+            json.dumps(
+              cwod.serializer(),
+              indent=2,
+            ),
+            'utf8',
+          ),
         )
+    httpd = HTTPServer(self.cwod.api_server_address, APIHandler)
+    httpd.serve_forever()
 
-    def run(self):
-        logger.info('Running Celery Worker On Demand...')
-        limiter = TokenBucket(1)
-        with self.consumer:
-            while True:
-                try:
-                    if limiter.can_consume(1):
-                        logger.debug('Drain events...')
-                        self.connection.drain_events()
-                    else:
-                        sleep_time = limiter.expected_time(1)
-                        logger.debug(f'Sleeping for {sleep_time} seconds...')
-                        sleep(sleep_time)
-                except Exception as e:
-                    logger.exception(e)
-                    raise e
 
-    def on_message(self, task_args, message):
-        logger.info(f"""---
-Message received
-| Task Args: {task_args}
-| Message: {message}
----""")
-        routing_key = message.delivery_info.get('routing_key')
-        if self.flag_up(routing_key):
-            self.up_worker(routing_key)
-        elif self.flag_down(routing_key):
-            self.down_worker(routing_key)
-        message.requeue()
+class CeleryWorkerOnDemand:
+  def __init__(self, celery_app, queue_size_updater_fill_rate=5,
+               api_server_address=('', 8000)):
+    self.celery_app = celery_app
+    self.queue_size_updater_fill_rate = queue_size_updater_fill_rate
+    self.api_server_address = api_server_address
+    self.queues = {}
+    for queue in self.celery_app.conf.get('task_queues'):
+      self.add_queue(queue.name)
+    self.queue_size_updater = QueueSizeUpdater(self)
+    self.api_server = APIServer(self)
 
-    def flag_up(self, queue):
-        return not self.exists_worker_to_queue(queue)
+  @cached_property
+  def connection(self):
+    logger.debug('Getting connection...')
+    return self.celery_app.connection(heartbeat=False)
 
-    def flag_down(self, queue):
-        return False
+  @cached_property
+  def channel(self):
+    return self.connection.default_channel
 
-    def up_worker(self, queue):
-        logger.debug(f'Up worker: {queue}')
+  def add_queue(self, queue_name):
+    self.queues[queue_name] = QueueStatus(queue_name)
 
-    def down_worker(self, queue):
-        logger.debug(f'Down worker: {queue}')
+  def run(self):
+    self.queue_size_updater.start()
+    self.api_server.start()
+    self.queue_size_updater.join()
+    self.api_server.join()
 
-    def exists_worker(self):
-        pass
-
-    def exists_worker_to_queue(self, queue_name):
-        logger.debug(f'Checking if exists some worker to {queue_name} ' +
-                     'queue...')
-
-        found = False
-
-        inspect = self.celery_app.control.inspect()
-        active_queues = inspect.active_queues()
-        if active_queues:
-            for worker_hostname, active_queues in active_queues.items():
-                for queue in active_queues:
-                    if queue.get('name') == queue_name:
-                        logger.debug(f'Worker to {queue_name} found: ' +
-                                     '{worker_hostname}')
-                        found = True
-
-        if not found:
-            logger.debug(f'Worker to {queue_name} not found!')
-
-        return found
+  def serializer(self):
+    return {
+      'queues': dict(
+        [
+          (queue_name, queue.serializer())
+          for queue_name, queue in self.queues.items()
+        ]
+      )
+    }
