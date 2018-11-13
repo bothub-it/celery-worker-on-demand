@@ -12,7 +12,7 @@ Check the [example](https://github.com/Ilhasoft/celery-worker-on-demand/tree/mas
 
 - Python 3.6
 - Celery 4.2.1 or higher
-- [Celery Application](http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html#application)
+- Your [Celery Application](http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html#application)
 - celery_worker_on_demand Python package
   ```bash
   pip install celery-worker-on-demand
@@ -38,7 +38,7 @@ class MyDemand(CeleryWorkerOnDemand):
     DownWorker = DownWorker
 ```
 
-### Implement up and down Celery worker script
+### Implement your up and down Celery worker script
 
 You need overide UpWorker and DownWorker run method with your custom script to up and down Celery worker.
 
@@ -69,7 +69,7 @@ class MyDemand(CeleryWorkerOnDemand):
 
 ### Create a runnable Python file
 
-Create a runnable Python file like above:
+Create a runnable Python file like above, to create a service.
 
 ```python
 #!/bin/env/python
