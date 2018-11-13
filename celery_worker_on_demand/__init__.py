@@ -17,6 +17,7 @@ class QueueStatus:
         self.name = name
         self.size = size
         self.many_workers = many_workers
+        self.last_task_added_at = None
 
     @property
     def has_worker(self):
@@ -28,6 +29,7 @@ class QueueStatus:
           'size': self.size,
           'many_workers': self.many_workers,
           'has_worker': self.has_worker,
+          'last_task_added_at': self.last_task_added_at,
         }
 
 
@@ -76,7 +78,6 @@ class UpWorker(threading.Thread):
         self.queue = queue
 
     def run(self):
-        logger.debug(f'Uping new worker to queue {self.queue.name}')
         raise Exception('UpWorker().run() not implemented')
 
 
