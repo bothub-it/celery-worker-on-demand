@@ -4,7 +4,7 @@ Up Celery worker in Docker container on demand.
 
 **Description:**
 
-In this test there is a Celery application with two tasks, add and diff, each running in a dedicated queue.
+In this example there is a Celery application with two tasks (add and diff) each running in a dedicated queue.
 
 ## Required Tools
 
@@ -15,7 +15,7 @@ In this test there is a Celery application with two tasks, add and diff, each ru
 
 ### Step 1
 
-Build Docker image `cwod-example-docker:latest` running follow command:
+Build Docker image `cwod-example-docker` running follow command:
 
 ```bash
 docker-compose build
