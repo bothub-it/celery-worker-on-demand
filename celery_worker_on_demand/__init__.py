@@ -149,29 +149,52 @@ class UpWorker(threading.Thread):
         raise Exception('UpWorker().run() not implemented')
 
 
+class DownWorker(threading.Thread):
+    def __init__(self, agent, queue):
+        super().__init__()
+        self.agent = agent
+        self.queue = queue
+
+    def run(self):
+        raise Exception('DownWorker().run() not implemented')
+
+
 class Agent(threading.Thread):
     def __init__(self, cwod):
         super().__init__()
         self.cwod = cwod
         self.up_worker_th = {}
+        self.down_worker_th = {}
 
     def run(self):
         while True:
             for queue in self.cwod.queues.values():
-                if self.flag_up(queue):
+                if self.flag_up(queue) \
+                        and not self.up_worker_th.get(queue.name):
                     logger.info(f'Up new worker to queue {queue.name}')
                     self.up_worker_th[queue.name] = self.cwod. \
                         UpWorker(self, queue)
                     self.up_worker_th[queue.name].start()
-                th = self.up_worker_th.get(queue.name)
-                if th and not th.isAlive():
+                if self.flag_down(queue) \
+                        and not self.down_worker_th.get(queue.name):
+                    self.down_worker_th[queue.name] = self.cwod. \
+                        DownWorker(self, queue)
+                    self.down_worker_th[queue.name].start()
+                th_up = self.up_worker_th.get(queue.name)
+                if th_up and not th_up.isAlive():
                     self.up_worker_th[queue.name] = None
+                th_down = self.down_worker_th.get(queue.name)
+                if th_down and not th_down.isAlive():
+                    self.down_worker_th[queue.name] = None
             sleep(.2)
 
     def flag_up(self, queue):
         return queue.size > 0 \
-            and not queue.has_worker \
-            and not self.up_worker_th.get(queue.name)
+            and not queue.has_worker
+
+    def flag_down(self, queue):
+        return queue.size == 0 \
+            and queue.has_worker
 
 
 class APIServer(threading.Thread):
@@ -208,6 +231,7 @@ class CeleryWorkerOnDemand:
     APIServer = APIServer
     Agent = Agent
     UpWorker = UpWorker
+    DownWorker = DownWorker
 
     def __init__(self, celery_app, queue_updater_fill_rate=2,
                  api_server_address=('', 8000)):
