@@ -54,15 +54,14 @@ class QueueUpdater(threading.Thread):
                     queue.workers = self.queue_workers(queue)
             else:
                 sleep_time = limiter.expected_time(1)
-                logger.debug(f'Sleeping for {sleep_time} seconds...')
+                logger.debug(f'QueueUpdater Sleeping for {sleep_time} ' +
+                             'seconds...')
                 sleep(sleep_time)
 
     def queue_size(self, queue):
         return self.cwod.channel._size(queue.name)
 
     def queue_workers(self, queue):
-        logger.debug(
-            f'Checking if exists some worker to {queue.name} queue...')
         workers = []
         inspect = self.cwod.celery_app.control.inspect()
         active_queues = inspect.active_queues()
@@ -70,13 +69,9 @@ class QueueUpdater(threading.Thread):
             for worker_hostname, active_queues in active_queues.items():
                 for q in active_queues:
                     if q.get('name') == queue.name:
-                        logger.debug(
-                            f'Worker to {queue.name} found: {worker_hostname}')
                         workers.append(
                             self.cwod.WorkerStatus.get(worker_hostname),
                         )
-        if len(workers) == 0:
-            logger.debug(f'Worker to {queue.name} not found!')
         return workers
 
 
@@ -177,6 +172,7 @@ class Agent(threading.Thread):
                     self.up_worker_th[queue.name].start()
                 if self.flag_down(queue) \
                         and not self.down_worker_th.get(queue.name):
+                    logger.info(f'Down worker to queue {queue.name}')
                     self.down_worker_th[queue.name] = self.cwod. \
                         DownWorker(self, queue)
                     self.down_worker_th[queue.name].start()
@@ -220,6 +216,9 @@ class APIServer(threading.Thread):
                     ),
                 )
         httpd = HTTPServer(self.cwod.api_server_address, APIHandler)
+        logger.info('Running API HTTP server in ' +
+                    f'{self.cwod.api_server_address[0]}:' +
+                    str(self.cwod.api_server_address[1]))
         httpd.serve_forever()
 
 
@@ -257,8 +256,10 @@ class CeleryWorkerOnDemand:
 
     def add_queue(self, queue_name):
         self.queues[queue_name] = self.QueueStatus(queue_name)
+        logger.info(f'Queue {queue_name} added!')
 
     def run(self):
+        logger.info('Running CeleryWorkerOnDemand...')
         self.queue_updater.start()
         self.worker_monitor.start()
         self.api_server.start()
