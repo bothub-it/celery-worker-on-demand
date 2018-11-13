@@ -18,16 +18,11 @@ class MyUpWorker(UpWorker):
     def run(self):
         container = docker_client.containers.run(
             'docker-test-app:latest',
-            entrypoint=f'celery -A test worker -l INFO -Q {self.queue.name}',
+            entrypoint=f'celery -A test worker -l INFO -Q {self.queue.name} ' +
+                       '-E',
             environment={
                 'BROKER': 'redis://redis:6379/0',
                 'BACKEND': 'redis://redis:6379/0',
-            },
-            volumes={
-                '/var/run/docker.sock': {
-                    'bind': '/var/run/docker.sock',
-                    'mode': 'rw',
-                },
             },
             network='docker-test-app',
             detach=True,
