@@ -1,7 +1,7 @@
 import setuptools
 
 
-name = 'celery_worker_on_demand'
+name = 'celery-worker-on-demand'
 version = '0.1.0'
 
 with open('README.md', 'r') as fh:
