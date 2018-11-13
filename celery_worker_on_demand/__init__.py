@@ -10,26 +10,33 @@ from kombu.utils.limits import TokenBucket
 
 
 logger = logging.getLogger('CeleryWorkerOnDemand')
+WORKERS = {}
 
 
 class QueueStatus:
-    def __init__(self, name, size=0, many_workers=0):
+    def __init__(self, name, size=0, workers=[]):
         self.name = name
         self.size = size
-        self.many_workers = many_workers
-        self.last_task_added_at = None
+        self.workers = workers
 
     @property
     def has_worker(self):
         return self.many_workers > 0
 
+    @property
+    def many_workers(self):
+        return len(self.workers)
+
     def serializer(self):
         return {
           'name': self.name,
           'size': self.size,
+          'workers': [
+              worker.hostname
+              for worker in self.workers
+          ],
           'many_workers': self.many_workers,
           'has_worker': self.has_worker,
-          'last_task_added_at': self.last_task_added_at,
         }
 
 
@@ -44,7 +51,7 @@ class QueueUpdater(threading.Thread):
             if limiter.can_consume():
                 for queue in self.cwod.queues.values():
                     queue.size = self.queue_size(queue)
-                    queue.many_workers = self.queue_many_workers(queue)
+                    queue.workers = self.queue_workers(queue)
             else:
                 sleep_time = limiter.expected_time(1)
                 logger.debug(f'Sleeping for {sleep_time} seconds...')
@@ -53,10 +60,10 @@ class QueueUpdater(threading.Thread):
     def queue_size(self, queue):
         return self.cwod.channel._size(queue.name)
 
-    def queue_many_workers(self, queue):
+    def queue_workers(self, queue):
         logger.debug(
             f'Checking if exists some worker to {queue.name} queue...')
-        found = 0
+        workers = []
         inspect = self.cwod.celery_app.control.inspect()
         active_queues = inspect.active_queues()
         if active_queues:
@@ -65,10 +72,71 @@ class QueueUpdater(threading.Thread):
                     if q.get('name') == queue.name:
                         logger.debug(
                             f'Worker to {queue.name} found: {worker_hostname}')
-                        found += 1
-        if found == 0:
+                        workers.append(
+                            self.cwod.WorkerStatus.get(worker_hostname),
+                        )
+        if len(workers) == 0:
             logger.debug(f'Worker to {queue.name} not found!')
-        return found
+        return workers
+
+
+class WorkerStatus:
+    @classmethod
+    def get(cls, hostname, *args, **kwargs):
+        worker = WORKERS.get(hostname)
+        if worker:
+            return worker
+        worker = cls(hostname, *args, **kwargs)
+        WORKERS[hostname] = worker
+        return worker
+
+    def __init__(self, hostname, last_task_received_at=None,
+                 last_heartbeat_at=None, last_task_started_at=None,
+                 last_task_succeeded_at=None):
+        self.hostname = hostname
+        self.last_heartbeat_at = last_heartbeat_at
+        self.last_task_received_at = last_task_received_at
+        self.last_task_started_at = last_task_started_at
+        self.last_task_succeeded_at = last_task_succeeded_at
+
+    def serializer(self):
+        return {
+            'hostname': self.hostname,
+            'last_heartbeat_at': self.last_heartbeat_at,
+            'last_task_received_at': self.last_task_received_at,
+            'last_task_started_at': self.last_task_started_at,
+            'last_task_succeeded_at': self.last_task_succeeded_at,
+        }
+
+
+class WorkerMonitor(threading.Thread):
+    def __init__(self, cwod):
+        super().__init__()
+        self.cwod = cwod
+
+    def run(self):
+        def handler(data):
+            self.on_event(data)
+        recv = self.cwod.celery_app.events.Receiver(
+            self.cwod.connection,
+            handlers={'*': handler},
+        )
+        recv.capture(limit=None, timeout=None, wakeup=True)
+
+    def on_event(self, event):
+        event_type = event.get('type')
+        hostname = event.get('hostname')
+        timestamp = event.get('timestamp')
+        logger.debug(f'Event received: {event_type} / From: {hostname}')
+        worker = self.cwod.WorkerStatus.get(hostname)
+        if event_type == 'worker-heartbeat':
+            worker.last_heartbeat_at = timestamp
+        elif event_type == 'task-received':
+            worker.last_task_received_at = timestamp
+        elif event_type == 'task-started':
+            worker.last_task_started_at = timestamp
+        elif event_type == 'task-succeeded':
+            worker.last_task_succeeded_at = timestamp
 
 
 class UpWorker(threading.Thread):
@@ -135,6 +203,8 @@ class APIServer(threading.Thread):
 class CeleryWorkerOnDemand:
     QueueStatus = QueueStatus
     QueueUpdater = QueueUpdater
+    WorkerStatus = WorkerStatus
+    WorkerMonitor = WorkerMonitor
     APIServer = APIServer
     Agent = Agent
     UpWorker = UpWorker
@@ -148,6 +218,7 @@ class CeleryWorkerOnDemand:
         for queue in self.celery_app.conf.get('task_queues'):
             self.add_queue(queue.name)
         self.queue_updater = self.QueueUpdater(self)
+        self.worker_monitor = self.WorkerMonitor(self)
         self.api_server = self.APIServer(self)
         self.agent = self.Agent(self)
 
@@ -165,9 +236,11 @@ class CeleryWorkerOnDemand:
 
     def run(self):
         self.queue_updater.start()
+        self.worker_monitor.start()
         self.api_server.start()
         self.agent.start()
         self.queue_updater.join()
+        self.worker_monitor.join()
         self.api_server.join()
         self.agent.join()
 
@@ -179,4 +252,10 @@ class CeleryWorkerOnDemand:
                     for queue_name, queue in self.queues.items()
                 ]
             ),
+            'workers': dict(
+                [
+                    (worker_hostname, worker.serializer())
+                    for worker_hostname, worker in WORKERS.items()
+                ]
+            )
         }
