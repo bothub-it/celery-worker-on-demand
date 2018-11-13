@@ -1,25 +1,24 @@
 version: '3.6'
 
 services:
-    docker-test-app:
-        image: docker-test-app:latest
+    cwod-example-docker:
+        image: cwod-example-docker:latest
         build:
             context: ..
-            dockerfile: ./test_docker/Dockerfile
+            dockerfile: ./example_docker/Dockerfile
         entrypoint:
             - python
-            - -m
         environment:
             BROKER: redis://redis:6379/0
             BACKEND: redis://redis:6379/0
         depends_on:
             - redis
     agent:
-        image: docker-test-app:latest
+        image: cwod-example-docker:latest
         entrypoint:
             - python
             - -m
-            - test
+            - example
         environment:
             BROKER: redis://redis:6379/0
             BACKEND: redis://redis:6379/0
@@ -34,4 +33,4 @@ services:
 
 networks:
     default:
-        name: docker-test-app
+        name: cwod-example-docker

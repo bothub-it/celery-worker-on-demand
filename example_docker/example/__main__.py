@@ -1,11 +1,11 @@
 import logging
 
 from . import celery_app
-from . import MyDemand
+from . import MyCeleryWorkerOnDemand
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
 
-    cbod = MyDemand(celery_app)
+    cbod = MyCeleryWorkerOnDemand(celery_app)
     cbod.run()

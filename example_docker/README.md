@@ -15,7 +15,7 @@ In this test there is a Celery application with two tasks, add and diff, each ru
 
 ### Step 1
 
-Build Docker image `docker-test-app:latest` running follow command:
+Build Docker image `cwod-example-docker:latest` running follow command:
 
 ```bash
 docker-compose build
@@ -35,8 +35,8 @@ Run a task:
 
 ```bash
 # task add
-docker-compose run docker-test-app test.run_task_add
+docker-compose run cwod-example-docker -m example.run_task_add
 
 # task diff
-docker-compose run docker-test-app test.run_task_diff
+docker-compose run cwod-example-docker -m example.run_task_diff
 ```

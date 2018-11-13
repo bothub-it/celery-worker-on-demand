@@ -3,9 +3,9 @@ import logging
 from time import sleep
 
 from celery_worker_on_demand import CeleryWorkerOnDemand
+from celery_worker_on_demand import Agent
 from celery_worker_on_demand import UpWorker
 from celery_worker_on_demand import DownWorker
-from celery_worker_on_demand import Agent
 
 from .celery_app import celery_app  # noqa:F401
 from . import tasks  # noqa:F401
@@ -29,14 +29,14 @@ class MyUpWorker(UpWorker):
             container.start()
         else:
             container = docker_client.containers.run(
-                'docker-test-app:latest',
-                entrypoint='celery -A test worker -l INFO -Q '
+                'cwod-example-docker:latest',
+                entrypoint='celery -A example worker -l INFO -Q ' +
                            f'{self.queue.name} -E',
                 environment={
                     'BROKER': 'redis://redis:6379/0',
                     'BACKEND': 'redis://redis:6379/0',
                 },
-                network='docker-test-app',
+                network='cwod-example-docker',
                 detach=True,
             )
             CONTAINERS[self.queue.name] = container
@@ -51,7 +51,7 @@ class MyDownWorker(DownWorker):
         CONTAINERS[self.queue.name].stop()
 
 
-class MyDemand(CeleryWorkerOnDemand):
+class MyCeleryWorkerOnDemand(CeleryWorkerOnDemand):
     Agent = MyAgent
     UpWorker = MyUpWorker
     DownWorker = MyDownWorker
