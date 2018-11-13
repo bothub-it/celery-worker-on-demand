@@ -27,20 +27,6 @@ services:
             - redis
         volumes:
             - /var/run/docker.sock:/var/run/docker.sock
-    broker:
-        image: docker-test-app:latest
-        entrypoint:
-            - celery
-            - -A
-            - test
-            - worker
-            - -l
-            - INFO
-        environment:
-            BROKER: redis://redis:6379/0
-            BACKEND: redis://redis:6379/0
-        depends_on:
-            - redis
     redis:
         image: redis:latest
         ports:
