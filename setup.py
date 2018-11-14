@@ -15,7 +15,7 @@ setuptools.setup(
     description='Up and down Celery workers on demand.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/Ilhasoft/celery-broker-on-demand',
+    url='https://github.com/Ilhasoft/celery-worker-on-demand',
     packages=['celery_worker_on_demand'],
     classifiers=[
         'Programming Language :: Python :: 3',
