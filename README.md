@@ -69,7 +69,7 @@ class MyDemand(CeleryWorkerOnDemand):
 
 ### Create a runnable Python file
 
-Create a runnable Python file like above, to create a service.
+Create a runnable Python file like below, to run like a service.
 
 ```python
 #!/bin/env/python
@@ -79,4 +79,29 @@ from .celery_app import celery_app
 
 # Run Celery Worker On Demand service
 MyDemand(celery_app).run()
+```
+
+## Customize up and down rules
+
+To customize up and down flag you just need overide Agent methods `flag_up` and `flag_down`.
+
+```python
+from celery_worker_on_demand import CeleryWorkerOnDemand
+from celery_worker_on_demand import Agent
+
+
+class MyAgent(Agent):
+    # When returns True, the UpWorker.run() method is executed
+    def flag_up(self, queue):
+        # queue is a QueueStatus instance
+        return super().flag_up(queue)
+
+    # When returns True, the DownWorker.run() method is executed
+    def flag_down(self, queue):
+        # queue is a QueueStatus instance
+        return super().flag_down(queue)
+
+
+class MyDemand(CeleryWorkerOnDemand):
+    Agent = MyAgent
 ```
