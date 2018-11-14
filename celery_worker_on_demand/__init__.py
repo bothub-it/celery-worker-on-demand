@@ -85,8 +85,8 @@ class WorkerStatus:
         WORKERS[hostname] = worker
         return worker
 
-    def __init__(self, hostname, last_task_received_at=None,
-                 last_heartbeat_at=None, last_task_started_at=None,
+    def __init__(self, hostname, last_heartbeat_at=None,
+                 last_task_received_at=None, last_task_started_at=None,
                  last_task_succeeded_at=None):
         self.hostname = hostname
         self.last_heartbeat_at = last_heartbeat_at
