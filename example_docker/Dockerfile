@@ -5,6 +5,6 @@ WORKDIR ${WORKDIR}
 
 RUN pip install pipenv
 
-COPY ./test_docker/ .
+COPY ./example_docker/ .
 COPY . ./celery-worker-on-demand/
 RUN pipenv install --system

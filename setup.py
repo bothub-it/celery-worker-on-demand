@@ -1,7 +1,7 @@
 import setuptools
 
 
-name = 'celery_worker_on_demand'
+name = 'celery-worker-on-demand'
 version = '0.1.0'
 
 with open('README.md', 'r') as fh:
@@ -15,7 +15,7 @@ setuptools.setup(
     description='Up and down Celery workers on demand.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/Ilhasoft/celery-broker-on-demand',
+    url='https://github.com/Ilhasoft/celery-worker-on-demand',
     packages=['celery_worker_on_demand'],
     classifiers=[
         'Programming Language :: Python :: 3',
