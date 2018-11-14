@@ -105,3 +105,140 @@ class MyAgent(Agent):
 class MyDemand(CeleryWorkerOnDemand):
     Agent = MyAgent
 ```
+
+## API
+
+### class CeleryWorkerOnDemand
+
+#### constructor
+
+- **celery_app** (arg): Your [Celery Application](http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html#application) instance.
+- **queue_updater_fill_rate** (kwarg): Times to update per second queue status. Default is `2`.
+- **api_server_address** (kwarg): Tuple with address and port to serve API. Default is `('', 8000)`.
+
+#### attributes
+
+- **celery_app**: Your Celery Application instance
+- **queue_updater_fill_rate**: Times to update per second queue status.
+- **api_server_address**: Tuple with address and port to serve API.
+- **queues**: Queue dictionary - key is the queue name and value is a QueueStatus instance.
+- **queue_updater**: Thread instance of QueueUpdater
+- **worker_monitor**: Thread instance of WorkerMonitor
+- **api_server**: Thread instance of APIServer
+- **agent**: Thread instance of Agent
+
+#### properties
+
+- **connection**: Cached property, returns main broker connection without heartbeat.
+- **channel**: Cached property, returns default channel.
+
+#### .add_queue(queue_name) method
+
+- **queue_name** (arg): Queue name.
+
+Add new queue to observer.
+
+#### .run() method
+
+Start the Celery Worker On Demand service.
+
+#### .serializer() method
+
+Returns a JSON serializable dictionary that represents the current state of instance.
+
+### class Agent
+
+#### constructor
+
+- **cwod** (arg): CeleryWorkerOnDemand instance.
+
+#### .run() method
+
+Watch current state of application to up and down workers.
+
+#### flag_up(queue) method
+
+- **queue** (arg): QueueStatus instance.
+
+When returns True, the UpWorker.run() method is executed.
+
+#### flag_down(queue) method
+
+- **queue** (arg): QueueStatus instance.
+
+When returns True, the DownWorker.run() method is executed
+
+### class UpWorker
+
+#### constructor
+
+- **agent** (arg): Agent instance.
+- **queue** (arg): QueueStatus instance.
+
+#### .run() method
+
+Python script to up new worker to queue.
+
+### class DownWorker
+
+#### constructor
+
+- **agent** (arg): Agent instance.
+- **queue** (arg): QueueStatus instance.
+
+#### .run() method
+
+Python script to down queue's worker(s).
+
+### class QueueStatus
+
+#### constructor
+
+- **name** (arg): Queue name.
+- **size** (kwarg): Current queue size, default is `0`.
+- **workers** (kwarg): List of WorkerStatus instance, default is a empty list.
+
+#### attributes
+
+- **name**: Queue name.
+- **size**: Current queue size.
+- **workers**: List of WorkerStatus instance.
+
+#### properties
+
+- **has_worker**: Returns True when queue has worker.
+- **many_workers**: Returns how many workers the queue have.
+
+#### .serializer() method
+
+Returns a JSON serializable dictionary that represents the current state of instance.
+
+### class WorkerStatus
+
+#### .get(hostname, *, **) class method
+
+- **hostname** (arg): Worker hostname.
+- **\***: args passed to WorkerStatus constructor.
+- **\*\***: kwargs passed to WorkerStatus constructor.
+
+Returns a cached WorkerStatus instance relative to hostname.
+
+#### constructor
+
+- **hostname** (arg): Worker hostname.
+- **last_heartbeat_at** (kwarg): Timestamp of last hearbeat. Default is `None`.
+- **last_task_received_at** (kwarg): Timestamp of last task received. Default is `None`.
+- **last_task_started_at** (kwarg): Timestamp of last task started. Default is `None`.
+- **last_task_succeeded_at** (kwarg): Timestamp of last task succeeded. Default is `None`.
+
+#### attributes
+
+- **hostname** (arg): Worker hostname.
+- **last_heartbeat_at** (kwarg): Timestamp of last hearbeat.
+- **last_task_received_at** (kwarg): Timestamp of last task received.
+- **last_task_started_at** (kwarg): Timestamp of last task started.
+- **last_task_succeeded_at** (kwarg): Timestamp of last task succeeded.
+
+#### .serializer() method
+
+Returns a JSON serializable dictionary that represents the current state of instance.
