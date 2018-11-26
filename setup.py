@@ -26,5 +26,5 @@ setuptools.setup(
         'celery>=4.2.1',
         'cached-property>=1.5.1',
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.4',
 )
