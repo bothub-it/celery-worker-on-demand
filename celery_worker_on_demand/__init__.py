@@ -59,7 +59,12 @@ class QueueUpdater(threading.Thread):
                 sleep(sleep_time)
 
     def queue_size(self, queue):
-        return self.cwod.channel._size(queue.name)
+        if hasattr(self.cwod.channel, '_size'):
+            return self.cwod.channel._size(queue.name)
+        return self.cwod.channel.queue_declare(
+            queue=queue.name,
+            passive=True,
+        ).message_count
 
     def queue_workers(self, queue):
         workers = []
