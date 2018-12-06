@@ -1,0 +1,41 @@
+version: '3.6'
+
+services:
+    cwod-example-docker-rabbitmq:
+        image: cwod-example-docker-rabbitmq:latest
+        build:
+            context: ..
+            dockerfile: ./example_docker_rabbitmq/Dockerfile
+        entrypoint:
+            - python
+        environment:
+            BROKER: amqp://cwod:cwod@rabbit:5672/rabbit
+            BACKEND: amqp://cwod:cwod@rabbit:5672/rabbit
+        depends_on:
+            - rabbit
+    agent:
+        image: cwod-example-docker-rabbitmq:latest
+        entrypoint:
+            - python
+            - -m
+            - example
+        environment:
+            BROKER: redis://redis:6379/0
+            BACKEND: redis://redis:6379/0
+        depends_on:
+            - rabbit
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+    rabbit:
+        image: rabbitmq
+        hostname: rabbit
+        ports:
+            - 5672:5672
+        environment:
+            RABBITMQ_DEFAULT_USER: cwod
+            RABBITMQ_DEFAULT_PASS: cwod
+            RABBITMQ_DEFAULT_VHOST: rabbit
+
+networks:
+    default:
+        name: cwod-example-docker-rabbitmq
