@@ -1,0 +1,3 @@
+/celery-worker-on-demand/
+docker-compose.yml
+Dockerfile
