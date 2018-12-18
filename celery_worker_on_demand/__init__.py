@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler
 
 from cached_property import cached_property
 from kombu.utils.limits import TokenBucket
+from amqp.exceptions import NotFound
 
 
 logger = logging.getLogger('CeleryWorkerOnDemand')
@@ -61,10 +62,13 @@ class QueueUpdater(threading.Thread):
     def queue_size(self, queue):
         if hasattr(self.cwod.channel, '_size'):
             return self.cwod.channel._size(queue.name)
-        return self.cwod.channel.queue_declare(
-            queue=queue.name,
-            passive=True,
-        ).message_count
+        try:
+            return self.cwod.channel.queue_declare(
+                queue=queue.name,
+                passive=True,
+            ).message_count
+        except NotFound:
+            return 0
 
     def queue_workers(self, queue):
         workers = []
