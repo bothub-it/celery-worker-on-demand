@@ -72,7 +72,8 @@ class QueueUpdater(threading.Thread):
 
     def queue_workers(self, queue):
         workers = []
-        inspect = self.cwod.celery_app.control.inspect()
+        inspect = self.cwod.celery_app.control.inspect(
+            connection=self.cwod.connection)
         active_queues = inspect.active_queues()
         if active_queues:
             for worker_hostname, active_queues in active_queues.items():
