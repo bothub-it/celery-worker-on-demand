@@ -51,24 +51,12 @@ class QueueUpdater(threading.Thread):
         while True:
             if limiter.can_consume():
                 for queue in self.cwod.queues.values():
-                    queue.size = self.queue_size(queue)
                     queue.workers = self.queue_workers(queue)
             else:
                 sleep_time = limiter.expected_time(1)
-                logger.debug(f'QueueUpdater Sleeping for {sleep_time} ' +
+                logger.debug(f'QueueUpdater sleeping for {sleep_time} ' +
                              'seconds...')
                 sleep(sleep_time)
-
-    def queue_size(self, queue):
-        if hasattr(self.cwod.channel, '_size'):
-            return self.cwod.channel._size(queue.name)
-        try:
-            return self.cwod.channel.queue_declare(
-                queue=queue.name,
-                passive=True,
-            ).message_count
-        except NotFound:
-            return 0
 
     def queue_workers(self, queue):
         workers = []
@@ -84,6 +72,29 @@ class QueueUpdater(threading.Thread):
                         )
         return workers
 
+
+class QueueSizeUpdater(threading.Thread):
+    def __init__(self, cwod):
+        super().__init__()
+        self.cwod = cwod
+
+    def run(self):
+        limiter = TokenBucket(self.cwod.queue_updater_fill_rate)
+        while True:
+            if limiter.can_consume():
+                for queue in self.cwod.queues.values():
+                    queue.size = self.queue_size(queue)
+
+    def queue_size(self, queue):
+        if hasattr(self.cwod.channel, '_size'):
+            return self.cwod.channel._size(queue.name)
+        try:
+            return self.cwod.channel.queue_declare(
+                queue=queue.name,
+                passive=True,
+            ).message_count
+        except NotFound:
+            return 0
 
 class WorkerStatus:
     @classmethod
@@ -234,6 +245,7 @@ class APIServer(threading.Thread):
 class CeleryWorkerOnDemand:
     QueueStatus = QueueStatus
     QueueUpdater = QueueUpdater
+    QueueSizeUpdater = QueueSizeUpdater
     WorkerStatus = WorkerStatus
     WorkerMonitor = WorkerMonitor
     APIServer = APIServer
@@ -250,6 +262,7 @@ class CeleryWorkerOnDemand:
         for queue in self.celery_app.conf.get('task_queues'):
             self.add_queue(queue.name)
         self.queue_updater = self.QueueUpdater(self)
+        self.queue_size_updater = self.QueueSizeUpdater(self)
         self.worker_monitor = self.WorkerMonitor(self)
         self.api_server = self.APIServer(self)
         self.agent = self.Agent(self)
@@ -270,10 +283,12 @@ class CeleryWorkerOnDemand:
     def run(self):
         logger.info('Running CeleryWorkerOnDemand...')
         self.queue_updater.start()
+        self.queue_size_updater.start()
         self.worker_monitor.start()
         self.api_server.start()
         self.agent.start()
         self.queue_updater.join()
+        self.queue_size_updater.join()
         self.worker_monitor.join()
         self.api_server.join()
         self.agent.join()
