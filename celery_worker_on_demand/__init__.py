@@ -96,6 +96,7 @@ class QueueSizeUpdater(threading.Thread):
         except NotFound:
             return 0
 
+
 class WorkerStatus:
     @classmethod
     def get(cls, hostname, *args, **kwargs):
@@ -133,11 +134,15 @@ class WorkerMonitor(threading.Thread):
     def run(self):
         def handler(data):
             self.on_event(data)
-        recv = self.cwod.celery_app.events.Receiver(
-            self.cwod.connection,
-            handlers={'*': handler},
-        )
-        recv.capture(limit=None, timeout=None, wakeup=True)
+        while True:
+            recv = self.cwod.celery_app.events.Receiver(
+                self.cwod.connection,
+                handlers={'*': handler},
+            )
+            try:
+                recv.capture(limit=None, timeout=None, wakeup=True)
+            except ConnectionResetError:
+                logger.warning('Reset monitor connection')
 
     def on_event(self, event):
         event_type = event.get('type')
