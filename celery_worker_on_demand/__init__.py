@@ -1,13 +1,14 @@
 import logging
 import threading
 import json
+
 from time import sleep
 from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
-
 from cached_property import cached_property
 from kombu.utils.limits import TokenBucket
 from amqp.exceptions import NotFound
+from functools import partial
 
 
 logger = logging.getLogger('CeleryWorkerOnDemand')
@@ -218,29 +219,50 @@ class Agent(threading.Thread):
             and queue.has_worker
 
 
+class APIHandler(BaseHTTPRequestHandler):
+    def __init__(self, cwod, *args, **kwargs):
+        self.cwod = cwod
+        super().__init__(*args, **kwargs)
+
+    def has_permission(self):
+        if not self.cwod.api_basic_authorization:
+            return True
+        if not self.headers.get('Authorization') == \
+                f'Basic {self.cwod.api_basic_authorization}':
+            self.send_response(401)
+            self.send_header(
+                'WWW-Authenticate',
+                'Basic',
+            )
+            self.end_headers()
+            return False
+        return True
+
+    def do_GET(self):
+        if not self.has_permission():
+            return
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(
+            bytes(
+                json.dumps(
+                    self.cwod.serializer(),
+                    indent=2,
+                ),
+                'utf8',
+            ),
+        )
+
+
 class APIServer(threading.Thread):
     def __init__(self, cwod):
         super().__init__()
         self.cwod = cwod
 
     def run(self):
-        cwod = self.cwod
-
-        class APIHandler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(
-                    bytes(
-                        json.dumps(
-                            cwod.serializer(),
-                            indent=2,
-                        ),
-                        'utf8',
-                    ),
-                )
-        httpd = HTTPServer(self.cwod.api_server_address, APIHandler)
+        api_handler = partial(self.cwod.APIHandler, self.cwod)
+        httpd = HTTPServer(self.cwod.api_server_address, api_handler)
         logger.info('Running API HTTP server in ' +
                     f'{self.cwod.api_server_address[0]}:' +
                     str(self.cwod.api_server_address[1]))
@@ -254,15 +276,17 @@ class CeleryWorkerOnDemand:
     WorkerStatus = WorkerStatus
     WorkerMonitor = WorkerMonitor
     APIServer = APIServer
+    APIHandler = APIHandler
     Agent = Agent
     UpWorker = UpWorker
     DownWorker = DownWorker
 
     def __init__(self, celery_app, queue_updater_fill_rate=2,
-                 api_server_address=('', 8000)):
+                 api_server_address=('', 8000), api_basic_authorization=None):
         self.celery_app = celery_app
         self.queue_updater_fill_rate = queue_updater_fill_rate
         self.api_server_address = api_server_address
+        self.api_basic_authorization = api_basic_authorization
         self.queues = {}
         for queue in self.celery_app.conf.get('task_queues'):
             self.add_queue(queue.name)
