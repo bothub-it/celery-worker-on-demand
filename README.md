@@ -115,12 +115,14 @@ class MyDemand(CeleryWorkerOnDemand):
 - **celery_app** (arg): Your [Celery Application](http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html#application) instance.
 - **queue_updater_fill_rate** (kwarg): Times to update per second queue status. Default is `2`.
 - **api_server_address** (kwarg): Tuple with address and port to serve API. Default is `('', 8000)`.
+- **api_basic_authorization** (kwarg): Add basic authorization in API. Set authorization header value to enable. Use [this generator](https://www.blitter.se/utils/basic-authentication-header-generator/).
 
 #### attributes
 
 - **celery_app**: Your Celery Application instance
 - **queue_updater_fill_rate**: Times to update per second queue status.
 - **api_server_address**: Tuple with address and port to serve API.
+- **api_basic_authorization**: Authorization header value.
 - **queues**: Queue dictionary - key is the queue name and value is a QueueStatus instance.
 - **queue_updater**: Thread instance of QueueUpdater
 - **worker_monitor**: Thread instance of WorkerMonitor
