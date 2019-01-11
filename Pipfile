@@ -3,6 +3,9 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
+[scripts]
+lint = "flake8"
+
 [packages]
 celery = ">=4.2.1"
 cached-property = ">=1.5.1"
