@@ -209,6 +209,7 @@ class Agent(threading.Thread):
                 th_down = self.down_worker_th.get(queue.name)
                 if th_down and not th_down.isAlive():
                     self.down_worker_th[queue.name] = None
+            sleep(0.3)
 
     def flag_up(self, queue):
         return queue.size > 0 \
