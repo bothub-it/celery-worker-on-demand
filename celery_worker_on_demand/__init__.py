@@ -85,6 +85,7 @@ class QueueSizeUpdater(threading.Thread):
             if limiter.can_consume():
                 for queue in self.cwod.queues.values():
                     queue.size = self.queue_size(queue)
+            sleep(1)
 
     def queue_size(self, queue):
         if hasattr(self.cwod.channel, '_size'):
@@ -209,7 +210,7 @@ class Agent(threading.Thread):
                 th_down = self.down_worker_th.get(queue.name)
                 if th_down and not th_down.isAlive():
                     self.down_worker_th[queue.name] = None
-            sleep(0.3)
+            sleep(1)
 
     def flag_up(self, queue):
         return queue.size > 0 \
