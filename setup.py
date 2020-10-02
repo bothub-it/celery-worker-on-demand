@@ -2,7 +2,7 @@ import setuptools
 
 
 name = 'celery-worker-on-demand'
-version = '0.2.0'
+version = '0.2.1'
 
 with open('README.md', 'r') as fh:
     long_description = fh.read()
@@ -15,7 +15,7 @@ setuptools.setup(
     description='Up and down Celery workers on demand.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/Ilhasoft/celery-worker-on-demand',
+    url='https://github.com/bothub-it/celery-worker-on-demand',
     packages=['celery_worker_on_demand'],
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -23,8 +23,8 @@ setuptools.setup(
         'Operating System :: OS Independent',
     ],
     install_requires=[
-        'celery>=4.2.1',
-        'cached-property>=1.5.1',
+        'celery~=4.3.0',
+        'cached-property~=1.5.1',
     ],
     python_requires='>=3.4',
 )

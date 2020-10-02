@@ -4,14 +4,14 @@ Up and down Celery workers on demand.
 
 ## Examples
 
-Check the [example](https://github.com/Ilhasoft/celery-worker-on-demand/tree/master/example_docker) using a Docker container to up and down Celery workers.
+Check the [example](https://github.com/bothub-it/celery-worker-on-demand/tree/master/example_docker) using a Docker container to up and down Celery workers.
 
 ## Usage
 
 ### Dependencies
 
 - Python 3.6
-- Celery 4.2.1 or higher
+- Celery 4.3.0 or higher
 - Your [Celery Application](http://docs.celeryproject.org/en/latest/getting-started/first-steps-with-celery.html#application)
 - celery_worker_on_demand Python package
   ```bash
